@@ -10,7 +10,7 @@ app.use(cors()) // Use this after the variable declaration
 
 // Access environment variables
 const MONGODB_URL = process.env.MONGODB_URL; // Make sure to declare this
-const PORT = process.env.PORT || 5000; // Set default to 5000 if PORT is not defined
+const PORT = process.env.PORT || 6000; // Set default to 5000 if PORT is not defined
 
 mongoose.Promise = global.Promise;
 
@@ -32,7 +32,7 @@ app.get('/', (req, res) => {
     res.json({ "message": "Server is running :D", "status": "true" });
 });
 
-app.use('admin', adminRoute);
+app.use('/admin', adminRoute);
 
 app.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);

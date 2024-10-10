@@ -17,13 +17,12 @@ exports.store = async (req, res) => {
             amount,
             category,
             paidOn,
-            // createdBy,
+            createdBy,
             remarks,
         } = req.body;
 
         // Access the uploaded file
         const attachment = req.file ? req.file.path : '';
-        const createdBy = '66f10257d60426f399fae814';
 
         // Create a new Expense instance
         const newExpense = new Expense({
@@ -59,10 +58,15 @@ exports.store = async (req, res) => {
 };
 
 exports.index = async (req, res) => {
-    const { category, startDate, endDate } = req.query; // Destructure category and date filters from query params
 
-    // Build a filter object
+    const { category, startDate, endDate, createdBy } = req.query; // Destructure filters from query params
+
     const filter = {};
+
+    // Add createdBy filter if provided
+    if (createdBy) {
+        filter.createdBy = createdBy; // Match against the database field createdBy
+    }
 
     // Add category filter if provided
     if (category) {

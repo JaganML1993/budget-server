@@ -10,6 +10,7 @@ const expenseValidation = require("../validators/expenseValidation");
 const Auth = require("../controllers/app.authController.js");
 const Commitment = require("../controllers/app.commitmentController.js");
 const Expense = require("../controllers/app.expenseController.js");
+const updateBalanceValidation = require('../validators/updateBalanceValidation.js');
 
 router.post("/register", registerValidation, Auth.register);
 router.post("/login", loginValidation, Auth.login);
@@ -24,7 +25,10 @@ router.post("/expense/store", upload.single('attachment'), expenseValidation, Ex
 router.get("/expenses/edit/:id", Expense.show);
 router.get("/expenses/view/:id", Expense.show);
 router.put("/expenses/update/:id", upload.single('attachment'), expenseValidation, Expense.update);
-
+router.get("/expenses/list-update-balance/:id", Expense.listUpdateBalance);
+router.post("/expenses/add-balance/:id", updateBalanceValidation, Expense.addBalance);
+router.put("/expenses/update-history/:historyId", updateBalanceValidation, Expense.updateHistory);
+router.delete("/expenses/delete-history/:id", updateBalanceValidation, Expense.deleteHistory );
 
 module.exports = router;
 

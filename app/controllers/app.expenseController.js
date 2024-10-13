@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const Expense = require("../model/expense.model.js");
+const ExpenseHistory = require("../model/updateBalance.model.js");
 
 // Create and Save a new Expense
 exports.store = async (req, res) => {
@@ -179,3 +180,226 @@ exports.update = async (req, res) => {
         });
     }
 };
+
+exports.listUpdateBalance = async (req, res) => {
+    const expenseId = req.params.id;
+
+    try {
+        // Fetch the expense details
+        const expense = await Expense.findById(expenseId);
+        if (!expense) {
+            return res.status(404).json({
+                status: "error",
+                code: 404,
+                message: "Expense not found",
+            });
+        }
+
+        // Fetch the update history for this expense
+        const history = await ExpenseHistory.find({ expenseId: expenseId });
+
+        res.status(200).json({
+            status: "success",
+            code: 200,
+            data: {
+                expense,
+                history,
+            },
+        });
+    } catch (err) {
+        console.error("Error occurred:", err); // Log the error for debugging
+        res.status(500).json({
+            status: "error",
+            code: 500,
+            message: "Internal Server Error",
+        });
+    }
+};
+
+exports.addBalance = async (req, res) => {
+    const errors = validationResult(req);
+
+    // Handle validation errors
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const expenseId = req.params.id;
+    const { amount, remarks, paidOn } = req.body;
+
+    try {
+        // Find the existing expense
+        const existingExpense = await Expense.findById(expenseId);
+        if (!existingExpense) {
+            return res.status(404).json({
+                status: "error",
+                code: 404,
+                message: "Expense not found",
+            });
+        }
+
+        // Parse and format the amount
+        const parsedAmount = parseFloat(amount);
+        if (isNaN(parsedAmount)) {
+            return res.status(400).json({
+                errors: [
+                    {
+                        msg: "Amount must be a valid number.",
+                        param: "amount",
+                    },
+                ],
+            });
+        }
+
+        // Update the existing expense's total amount
+        existingExpense.amount = (parseFloat(existingExpense.amount) - parsedAmount).toFixed(2);
+        await existingExpense.save();
+
+        // Create a history record
+        const historyRecord = new ExpenseHistory({
+            expenseId: expenseId,
+            amount: parsedAmount.toFixed(2),
+            remarks: remarks,
+            paidOn: new Date(paidOn),
+            updatedAt: new Date(),
+        });
+
+        await historyRecord.save(); // Save the history record
+
+        res.status(201).json({
+            status: "success",
+            code: 201,
+            data: historyRecord,
+            message: "New balance added successfully",
+        });
+    } catch (err) {
+        console.error(err); // Log the error for debugging
+        res.status(500).json({
+            status: "error",
+            code: 500,
+            message: "Internal Server Error",
+        });
+    }
+};
+
+exports.updateHistory = async (req, res) => {
+    const errors = validationResult(req);
+
+    // Handle validation errors
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const historyId = req.params.historyId;
+    const { amount, remarks, paidOn } = req.body;
+
+    try {
+        // Find the existing history record
+        const existingHistory = await ExpenseHistory.findById(historyId);
+        if (!existingHistory) {
+            return res.status(404).json({
+                status: "error",
+                code: 404,
+                message: "History record not found",
+            });
+        }
+
+        // Find the associated expense
+        const associatedExpense = await Expense.findById(existingHistory.expenseId);
+        if (!associatedExpense) {
+            return res.status(404).json({
+                status: "error",
+                code: 404,
+                message: "Associated expense not found",
+            });
+        }
+
+        let originalAmount = parseFloat(existingHistory.amount);
+        let parsedAmount;
+
+        // Update amount if provided
+        if (amount) {
+            parsedAmount = parseFloat(amount);
+            if (isNaN(parsedAmount)) {
+                return res.status(400).json({
+                    errors: [
+                        {
+                            msg: "Amount must be a valid number.",
+                            param: "amount",
+                        },
+                    ],
+                });
+            }
+
+            // Adjust the expense total by the difference between the old and new amount
+            associatedExpense.amount = (
+                parseFloat(associatedExpense.amount) + (originalAmount - parsedAmount)
+            ).toFixed(2);
+
+            // Update history with the new amount
+            existingHistory.amount = parsedAmount.toFixed(2);
+        }
+
+        // Update other fields if provided
+        if (remarks) {
+            existingHistory.remarks = remarks;
+        }
+
+        if (paidOn) {
+            existingHistory.paidOn = new Date(paidOn);
+        }
+
+        existingHistory.updatedAt = new Date();
+
+        // Save the updated expense and history
+        await associatedExpense.save();
+        await existingHistory.save();
+
+        res.status(200).json({
+            status: "success",
+            code: 200,
+            data: existingHistory,
+            message: "History record updated successfully",
+        });
+    } catch (err) {
+        console.error(err); // Log the error for debugging
+        res.status(500).json({
+            status: "error",
+            code: 500,
+            message: "Internal Server Error",
+        });
+    }
+};
+
+
+exports.deleteHistory = async (req, res) => {
+    const historyId = req.params.id;
+
+    try {
+        const deletedHistory = await ExpenseHistory.findByIdAndDelete(historyId);
+        if (!deletedHistory) {
+            return res.status(404).json({
+                status: "error",
+                code: 404,
+                message: "History record not found",
+            });
+        }
+
+        res.status(200).json({
+            status: "success",
+            code: 200,
+            message: "History record deleted successfully",
+        });
+    } catch (err) {
+        res.status(500).json({
+            status: "error",
+            code: 500,
+            message: "Internal Server Error",
+        });
+    }
+};
+
+
+
+
+

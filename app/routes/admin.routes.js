@@ -8,12 +8,15 @@ const commitmentStoreValidation = require("../validators/commitmentValidation");
 const expenseValidation = require("../validators/expenseValidation");
 
 const Auth = require("../controllers/app.authController.js");
+const Dashboard = require("../controllers/app.dashboardController.js");
 const Commitment = require("../controllers/app.commitmentController.js");
 const Expense = require("../controllers/app.expenseController.js");
 const updateBalanceValidation = require('../validators/updateBalanceValidation.js');
 
 router.post("/register", registerValidation, Auth.register);
 router.post("/login", loginValidation, Auth.login);
+
+router.get("/dashboard/index", Dashboard.index);
 
 router.post("/commitment/store", commitmentStoreValidation, Commitment.store);
 router.get("/commitment/index", Commitment.index);

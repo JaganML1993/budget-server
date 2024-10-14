@@ -28,6 +28,7 @@ router.post("/expense/store", upload.single('attachment'), expenseValidation, Ex
 router.get("/expenses/edit/:id", Expense.show);
 router.get("/expenses/view/:id", Expense.show);
 router.put("/expenses/update/:id", upload.single('attachment'), expenseValidation, Expense.update);
+router.delete("/expenses/:id", Expense.delete);
 router.get("/expenses/list-update-balance/:id", Expense.listUpdateBalance);
 router.post("/expenses/add-balance/:id", updateBalanceValidation, Expense.addBalance);
 router.put("/expenses/update-history/:historyId", updateBalanceValidation, Expense.updateHistory);

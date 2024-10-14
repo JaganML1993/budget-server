@@ -88,7 +88,7 @@ exports.index = async (req, res) => {
 
     try {
         // Fetch expenses based on filters
-        const expenses = await Expense.find(filter);
+        const expenses = await Expense.find(filter).sort({ paidOn: -1 });
 
         // Send a success response with the retrieved expenses
         res.status(200).json({
@@ -137,7 +137,6 @@ exports.show = async (req, res) => {
     }
 };
 
-// Update an existing expense by ID
 exports.update = async (req, res) => {
     const errors = validationResult(req);
 
@@ -180,6 +179,38 @@ exports.update = async (req, res) => {
         });
     }
 };
+
+exports.delete = async (req, res) => {
+    try {
+        const { id } = req.params; // Ensure you're getting the ID from req.params
+
+        // Find the expense by ID and delete it
+        const deletedExpense = await Expense.findByIdAndDelete(id);
+
+        if (!deletedExpense) {
+            return res.status(404).json({
+                success: false,
+                message: "Expense not found",
+            });
+        }
+
+        // Optionally, delete related expense histories (if needed)
+        await ExpenseHistory.deleteMany({ expenseId: id });
+
+        return res.status(200).json({
+            success: true,
+            message: "Expense deleted successfully",
+            data: deletedExpense,
+        });
+    } catch (error) {
+        console.error("Error deleting expense:", error);
+        return res.status(500).json({
+            success: false,
+            message: "An error occurred while deleting the expense",
+        });
+    }
+};
+
 
 exports.listUpdateBalance = async (req, res) => {
     const expenseId = req.params.id;
@@ -398,6 +429,7 @@ exports.deleteHistory = async (req, res) => {
         });
     }
 };
+
 
 
 

@@ -59,8 +59,7 @@ exports.store = async (req, res) => {
 };
 
 exports.index = async (req, res) => {
-
-    const { category, startDate, endDate, createdBy } = req.query; // Destructure filters from query params
+    const { category, startDate, endDate, createdBy, page = 1, limit = 10 } = req.query; // Destructure pagination params with defaults
 
     const filter = {};
 
@@ -87,15 +86,36 @@ exports.index = async (req, res) => {
     }
 
     try {
-        // Fetch expenses based on filters
-        const expenses = await Expense.find(filter).sort({ paidOn: -1 });
+        // Fetch total count of expenses for pagination
+        const totalExpenses = await Expense.countDocuments(filter);
 
-        // Send a success response with the retrieved expenses
+        // Fetch expenses based on filters, pagination, and sorting
+        const expensesTotal = await Expense.find(filter);
+
+        const expenses = await Expense.find(filter)
+            .sort({ paidOn: -1 })
+            .skip((page - 1) * limit) // Skip the number of records based on the current page
+            .limit(Number(limit)); // Limit the number of records returned
+
+        // Calculate total amount spent
+        const totalAmountSpent = expensesTotal.reduce((total, expense) => {
+            const amount = typeof expense.amount === 'object'
+                ? parseFloat(expense.amount.toString()) // Use toString() for Decimal128
+                : parseFloat(expense.amount);
+
+            return total + (isNaN(amount) ? 0 : amount);
+        }, 0);
+
+        // Send a success response with the retrieved expenses, total count, and total amount spent
         res.status(200).json({
             status: "success",
             code: 200,
             data: expenses,
+            total: totalExpenses,
+            totalAmountSpent, // Include total amount spent
             message: "Expenses retrieved successfully",
+            totalPages: Math.ceil(totalExpenses / limit), // Calculate total pages
+            currentPage: Number(page), // Include current page
         });
     } catch (err) {
         // Handle any errors that occur during the fetch process

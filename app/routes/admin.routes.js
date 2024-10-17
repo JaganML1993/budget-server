@@ -5,6 +5,7 @@ const upload = require('../middleware/upload');
 const registerValidation = require("../validators/registerValidation");
 const loginValidation = require("../validators/loginValidation");
 const commitmentStoreValidation = require("../validators/commitmentValidation");
+const commitmentHistoryValidation = require("../validators/commitmentHistoryValidation");
 const expenseValidation = require("../validators/expenseValidation");
 
 const Auth = require("../controllers/app.authController.js");
@@ -18,10 +19,18 @@ router.post("/login", loginValidation, Auth.login);
 
 router.get("/dashboard/index", Dashboard.index);
 
-router.post("/commitment/store", commitmentStoreValidation, Commitment.store);
-router.get("/commitment/index", Commitment.index);
-router.get("/commitment/details/:id", Commitment.details);
-router.put("/commitment/update/:id", commitmentStoreValidation, Commitment.update);
+router.get("/commitments", Commitment.index);
+router.post("/commitments/store", upload.single('attachment'), commitmentStoreValidation, Commitment.store);
+router.get("/commitments/view/:id", Commitment.show);
+router.get("/commitments/edit/:id", Commitment.show);
+router.put("/commitments/update/:id", upload.single('attachment'), commitmentStoreValidation, Commitment.update);
+router.delete("/commitments/:id", Commitment.delete);
+
+router.get("/commitments/history/:id", Commitment.indexHistory);
+router.post("/commitments/history/store", upload.single('attachment'), commitmentHistoryValidation, Commitment.storeHistory);
+router.get("/commitments/history/edit/:id", Commitment.showHistory);
+router.put("/commitments/history/update/:id", upload.single('attachment'), commitmentHistoryValidation, Commitment.updateHistory);
+router.delete("/commitments/history/:id", Commitment.deleteHistory);
 
 router.get("/expenses", Expense.index);
 router.post("/expense/store", upload.single('attachment'), expenseValidation, Expense.store);
@@ -32,7 +41,7 @@ router.delete("/expenses/:id", Expense.delete);
 router.get("/expenses/list-update-balance/:id", Expense.listUpdateBalance);
 router.post("/expenses/add-balance/:id", updateBalanceValidation, Expense.addBalance);
 router.put("/expenses/update-history/:historyId", updateBalanceValidation, Expense.updateHistory);
-router.delete("/expenses/delete-history/:id", updateBalanceValidation, Expense.deleteHistory );
+router.delete("/expenses/delete-history/:id", updateBalanceValidation, Expense.deleteHistory);
 
 module.exports = router;
 

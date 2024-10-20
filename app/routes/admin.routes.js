@@ -16,6 +16,7 @@ const updateBalanceValidation = require('../validators/updateBalanceValidation.j
 
 router.post("/register", registerValidation, Auth.register);
 router.post("/login", loginValidation, Auth.login);
+router.get("/details", Auth.details);
 
 router.get("/dashboard/index", Dashboard.index);
 

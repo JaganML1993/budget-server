@@ -118,3 +118,46 @@ exports.login = async (req, res) => {
         });
     }
 };
+
+// Assuming User has a name field
+exports.details = async (req, res) => {
+    const createdBy = req.query.createdBy;
+    
+    try {
+        const user = await Admin.findById(createdBy); // Use createdBy to find the user
+
+        // Check if the User exists
+        if (!user) {
+            return res.status(404).json({
+                status: "error",
+                code: 404,
+                data: [],
+                message: "User not found",
+            });
+        }
+
+        // Send success response with the User details
+        return res.status(200).json({
+            status: "success",
+            code: 200,
+            data: {
+                id: user._id,
+                name: user.fullname, // Assuming you meant fullname here
+                // Add other fields as needed
+            },
+            message: "User details retrieved successfully",
+        });
+
+    } catch (err) {
+        // Handle any errors during the fetch process
+        console.error(err); // Log the error for debugging
+        return res.status(500).json({
+            status: "error",
+            code: 500,
+            data: [],
+            message: "Internal Server Error",
+        });
+    }
+};
+
+

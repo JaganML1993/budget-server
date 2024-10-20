@@ -4,6 +4,29 @@ const Commitment = require("../model/commitment.model.js");
 const User = require("../model/admin.model.js");
 const CommitmentHistory = require("../model/commitmentHistory.model.js");
 
+const recalculateCommitment = async (commitmentId) => {
+    // Fetch all histories for the specific commitmentId
+    const commitmentHistories = await CommitmentHistory.find({ commitmentId });
+
+    const paid = commitmentHistories.length; // Total number of paid EMIs
+    const paidAmount = commitmentHistories.reduce((sum, history) => {
+        return sum + parseFloat(history.amount.toString());
+    }, 0); // Total paid amount
+
+    const commitment = await Commitment.findById(commitmentId); // Fetch the commitment
+    const totalAmount = commitment.totalEmi * parseFloat(commitment.emiAmount.toString()); // Total amount to be paid
+    const balanceAmount = totalAmount - paidAmount; // Remaining balance
+    const pending = commitment.totalEmi - paid; // Pending EMI count
+
+    // Update the commitment fields
+    commitment.balanceAmount = balanceAmount;
+    commitment.paidAmount = paidAmount;
+    commitment.pending = pending;
+    commitment.paid = paid;
+
+    await commitment.save(); // Save the updated commitment
+};
+
 // Create and Save a new Commitment
 exports.store = async (req, res) => {
 
@@ -329,25 +352,8 @@ exports.storeHistory = async (req, res) => {
         // Save the commitment history
         await commitmentHistory.save();
 
-        // Fetch all histories for the specific commitmentId and calculate the total paid and paidAmount
-        const commitmentHistories = await CommitmentHistory.find({ commitmentId });
-
-        const paid = commitmentHistories.length; // Total number of paid EMIs
-        const paidAmount = commitmentHistories.reduce((sum, history) => {
-            return sum + parseFloat(history.amount.toString());
-        }, 0); // Total paid amount
-
-        const totalAmount = commitment.totalEmi * parseFloat(commitment.emiAmount.toString()); // Total amount to be paid
-        const balanceAmount = totalAmount - paidAmount; // Remaining balance
-        const pending = commitment.totalEmi - paid; // Pending EMI count
-
-        // Update the commitment fields
-        commitment.balanceAmount = balanceAmount;
-        commitment.paidAmount = paidAmount;
-        commitment.pending = pending;
-        commitment.paid = paid;
-
-        await commitment.save();
+        // Recalculate the commitment totals
+        await recalculateCommitment(commitmentId);
 
         // Respond with success message
         res.status(201).json({
@@ -418,20 +424,25 @@ exports.updateHistory = async (req, res) => {
             });
         }
 
+        // Store the commitmentId for recalculation
+        const commitmentId = commitmentHistory.commitmentId;
+
         // Update the commitment history with new values
         commitmentHistory.amount = amount;
         commitmentHistory.currentEmi = currentEmi;
-        commitmentHistory.paidDate = paidDate;
+        commitmentHistory.paidDate = paidDate ? new Date(paidDate) : new Date();
         commitmentHistory.remarks = remarks;
 
         // Handle attachment (if provided)
         if (req.file) {
-            // Assuming you want to replace the existing attachment
             commitmentHistory.attachment = req.file.path; // Save the path of the uploaded file
         }
 
         // Save the updated commitment history
         await commitmentHistory.save();
+
+        // Recalculate the commitment totals
+        await recalculateCommitment(commitmentId);
 
         // Send success response
         return res.status(200).json({
@@ -442,7 +453,6 @@ exports.updateHistory = async (req, res) => {
         });
 
     } catch (err) {
-        // Handle any errors during the update process
         console.error(err); // Log the error for debugging
         return res.status(500).json({
             status: "error",
@@ -468,6 +478,12 @@ exports.deleteHistory = async (req, res) => {
             });
         }
 
+        // Store the commitmentId for recalculation
+        const commitmentId = deletedHistory.commitmentId;
+
+        // Recalculate the commitment totals
+        await recalculateCommitment(commitmentId);
+
         // Respond with a success message
         return res.status(200).json({
             success: true,
@@ -483,5 +499,6 @@ exports.deleteHistory = async (req, res) => {
         });
     }
 };
+
 
 

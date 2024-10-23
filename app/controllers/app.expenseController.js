@@ -59,13 +59,13 @@ exports.store = async (req, res) => {
 };
 
 exports.index = async (req, res) => {
-    const { category, startDate, endDate, createdBy, page = 1, limit = 10 } = req.query; // Destructure pagination params with defaults
+    const { category, startDate, endDate, createdBy, page = 1, limit = 10 } = req.query;
 
     const filter = {};
 
     // Add createdBy filter if provided
     if (createdBy) {
-        filter.createdBy = createdBy; // Match against the database field createdBy
+        filter.createdBy = createdBy;
     }
 
     // Add category filter if provided
@@ -73,52 +73,55 @@ exports.index = async (req, res) => {
         filter.category = category;
     }
 
+    // Date validation
+    const parsedStartDate = new Date(startDate);
+    const parsedEndDate = new Date(endDate);
+
+    if (startDate && endDate && parsedStartDate > parsedEndDate) {
+        return res.status(400).json({
+            status: "error",
+            code: 400,
+            message: "Start date cannot be after end date."
+        });
+    }
+
     // Add date range filter if both start and end dates are provided
-    if (startDate && endDate) {
-        filter.paidOn = {
-            $gte: new Date(startDate), // Start date (inclusive)
-            $lte: new Date(endDate),   // End date (inclusive)
-        };
-    } else if (startDate) {
-        filter.paidOn = { $gte: new Date(startDate) }; // Only start date provided
-    } else if (endDate) {
-        filter.paidOn = { $lte: new Date(endDate) }; // Only end date provided
+    if (startDate && !isNaN(parsedStartDate.getTime())) {
+        filter.paidOn = { ...filter.paidOn, $gte: parsedStartDate };
+    }
+    if (endDate && !isNaN(parsedEndDate.getTime())) {
+        filter.paidOn = { ...filter.paidOn, $lte: parsedEndDate };
     }
 
     try {
-        // Fetch total count of expenses for pagination
+        const pageNumber = Number(page) || 1; // Convert to number
         const totalExpenses = await Expense.countDocuments(filter);
-
-        // Fetch expenses based on filters, pagination, and sorting
-        const expensesTotal = await Expense.find(filter);
-
         const expenses = await Expense.find(filter)
             .sort({ paidOn: -1 })
-            .skip((page - 1) * limit) // Skip the number of records based on the current page
-            .limit(Number(limit)); // Limit the number of records returned
+            .skip((pageNumber - 1) * limit)
+            .limit(Number(limit));
 
-        // Calculate total amount spent
+        const totalAmountFilter = { ...filter, category: { $ne: 7 } };
+        const expensesTotal = await Expense.find(totalAmountFilter);
         const totalAmountSpent = expensesTotal.reduce((total, expense) => {
             const amount = typeof expense.amount === 'object'
-                ? parseFloat(expense.amount.toString()) // Use toString() for Decimal128
+                ? parseFloat(expense.amount.toString())
                 : parseFloat(expense.amount);
-
             return total + (isNaN(amount) ? 0 : amount);
         }, 0);
 
-        // Send a success response with the retrieved expenses, total count, and total amount spent
         res.status(200).json({
             status: "success",
             code: 200,
             data: expenses,
             total: totalExpenses,
-            totalAmountSpent, // Include total amount spent
+            totalAmountSpent,
             message: "Expenses retrieved successfully",
-            totalPages: Math.ceil(totalExpenses / limit), // Calculate total pages
-            currentPage: Number(page), // Include current page
+            totalPages: Math.ceil(totalExpenses / limit),
+            currentPage: pageNumber,
         });
     } catch (err) {
-        // Handle any errors that occur during the fetch process
+        console.error("Error fetching expenses:", err); // Log the error details
         res.status(500).json({
             status: "error",
             code: 500,
@@ -127,6 +130,7 @@ exports.index = async (req, res) => {
         });
     }
 };
+
 
 exports.show = async (req, res) => {
     try {

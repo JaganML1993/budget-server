@@ -27,7 +27,8 @@ exports.index = async (req, res) => {
                     paidOn: {
                         $gte: startOfMonth,
                         $lte: endOfToday
-                    }
+                    },
+                    category: { $ne: 7 }
                 }
             },
             {
@@ -92,7 +93,8 @@ exports.index = async (req, res) => {
                     totalPending: 1,
                     _id: 0 // Exclude the original _id field
                 }
-            },
+            }
+            ,
             {
                 $match: {
                     totalPaid: { $gt: 0 }, // Ensure totalPaid is greater than 0
@@ -101,10 +103,36 @@ exports.index = async (req, res) => {
             }
         ]);
 
+        // Aggregate total expenses by month
+        const monthlyExpenses = await Expense.aggregate([
+            {
+                $match: {
+                    createdBy: userId,
+                    category: { $ne: 7 },
+                },
+            },
+            {
+                $group: {
+                    _id: { $month: "$paidOn" }, // Group by month
+                    totalAmount: { $sum: { $toDouble: "$amount" } },
+                },
+            },
+            {
+                $sort: { _id: 1 }, // Sort by month
+            },
+        ]);
+
+        // Prepare monthly totals array
+        const monthlyTotals = new Array(12).fill(0); // 12 months
+        monthlyExpenses.forEach(expense => {
+            monthlyTotals[expense._id - 1] = expense.totalAmount; // Populate the array
+        });
+
         res.status(200).json({
             dailyTotals,
             monthlyCategoryExpenses,
-            commitments: commitmentAggregates // Return commitments grouped by payFor
+            commitments: commitmentAggregates,
+            monthlyTotals, 
         });
     } catch (err) {
         console.error(err); // Log the error for debugging

@@ -51,10 +51,16 @@ exports.store = async (req, res) => {
 
         // Handle file uploads
         const attachment = req.file ? req.file.path : '';
-        const balanceAmount = 0.0;
         const paidAmount = 0.0;
-        const pending = 0;
-        const paid = 0;
+        let balanceAmount = 0.0;
+        let pending = 0;
+        let paid = 0;
+
+        if (category == 2) {
+            paid = 0;
+            pending = 1;
+            balanceAmount = emiAmount
+        }
 
         // Create a new Commitment instance
         const newCommitment = new Commitment({
@@ -219,10 +225,18 @@ exports.update = async (req, res) => {
         commitment.remarks = remarks;
         commitment.attachment = attachment;
 
-        commitment.balanceAmount = commitment.balanceAmount;
-        commitment.paidAmount = commitment.paidAmount;
-        commitment.pending = commitment.pending;
-        commitment.paid = commitment.paid;
+        // Set paid and pending based on the category
+        if (category == 2) {
+            commitment.paid = 0;
+            commitment.pending = 1;
+            commitment.balanceAmount = emiAmount;
+            commitment.paidAmount = 0.0;
+        } else {
+            commitment.paid = commitment.paid;
+            commitment.pending = commitment.pending;
+            commitment.balanceAmount = commitment.balanceAmount;
+            commitment.paidAmount = commitment.paidAmount;
+        }
 
         // Save the updated commitment back to the database
         const updatedCommitment = await commitment.save();

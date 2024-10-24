@@ -76,14 +76,14 @@ exports.index = async (req, res) => {
         const commitmentAggregates = await Commitment.aggregate([
             {
                 $match: {
-                    createdBy: userId,
+                    createdBy: userId, // Match documents created by the user
                 }
             },
             {
                 $group: {
                     _id: "$payFor", // Group by payFor
-                    totalPaid: { $sum: { $toDouble: "$paid" } }, // Total paid amount
-                    totalPending: { $sum: { $toDouble: "$pending" } } // Total pending amount
+                    totalPaid: { $sum: { $toDouble: "$paidAmount" } }, // Total paid amount from paidAmount
+                    totalPending: { $sum: { $toDouble: "$balanceAmount" } } // Total pending amount from balanceAmount
                 }
             },
             {
@@ -93,11 +93,10 @@ exports.index = async (req, res) => {
                     totalPending: 1,
                     _id: 0 // Exclude the original _id field
                 }
-            }
-            ,
+            },
             {
                 $match: {
-                    totalPaid: { $gt: 0 }, // Ensure totalPaid is greater than 0
+                    // totalPaid: { $gt: 0 }, // Ensure totalPaid is greater than 0
                     totalPending: { $gt: 0 } // Ensure totalPending is greater than 0
                 }
             }
@@ -132,7 +131,7 @@ exports.index = async (req, res) => {
             dailyTotals,
             monthlyCategoryExpenses,
             commitments: commitmentAggregates,
-            monthlyTotals, 
+            monthlyTotals,
         });
     } catch (err) {
         console.error(err); // Log the error for debugging

@@ -61,6 +61,8 @@ exports.store = async (req, res) => {
 exports.index = async (req, res) => {
     const { category, startDate, endDate, createdBy, page = 1, limit = 10 } = req.query;
 
+    console.log(req.query);
+
     const filter = {};
 
     // Add createdBy filter if provided
@@ -101,8 +103,20 @@ exports.index = async (req, res) => {
             .skip((pageNumber - 1) * limit)
             .limit(Number(limit));
 
-        const totalAmountFilter = { ...filter, category: { $ne: 7 } };
+        // Modify totalAmountFilter to include existing filters and exclude category 7
+        const totalAmountFilter = {
+            ...filter,
+            category: { $ne: 7 }  // Exclude category 7
+        };
+
+        // If category is provided, include it in the total amount filter
+        if (category) {
+            totalAmountFilter.category = category;
+        }
+
+        // Fetch all expenses matching the modified totalAmountFilter
         const expensesTotal = await Expense.find(totalAmountFilter);
+
         const totalAmountSpent = expensesTotal.reduce((total, expense) => {
             const amount = typeof expense.amount === 'object'
                 ? parseFloat(expense.amount.toString())
@@ -121,7 +135,7 @@ exports.index = async (req, res) => {
             currentPage: pageNumber,
         });
     } catch (err) {
-        console.error("Error fetching expenses:", err); // Log the error details
+        console.error("Error fetching expenses:", err);
         res.status(500).json({
             status: "error",
             code: 500,
@@ -129,8 +143,8 @@ exports.index = async (req, res) => {
             message: "Internal Server Error",
         });
     }
-};
 
+};
 
 exports.show = async (req, res) => {
     try {

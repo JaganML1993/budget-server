@@ -61,8 +61,6 @@ exports.store = async (req, res) => {
 exports.index = async (req, res) => {
     const { category, startDate, endDate, createdBy, page = 1, limit = 10 } = req.query;
 
-    console.log(req.query);
-
     const filter = {};
 
     // Add createdBy filter if provided

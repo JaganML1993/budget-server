@@ -7,12 +7,14 @@ const loginValidation = require("../validators/loginValidation");
 const commitmentStoreValidation = require("../validators/commitmentValidation");
 const commitmentHistoryValidation = require("../validators/commitmentHistoryValidation");
 const expenseValidation = require("../validators/expenseValidation");
+const updateBalanceValidation = require('../validators/updateBalanceValidation.js');
+const notesValidation = require("../validators/notesValidation");
 
 const Auth = require("../controllers/app.authController.js");
 const Dashboard = require("../controllers/app.dashboardController.js");
 const Commitment = require("../controllers/app.commitmentController.js");
 const Expense = require("../controllers/app.expenseController.js");
-const updateBalanceValidation = require('../validators/updateBalanceValidation.js');
+const Notes = require("../controllers/app.notesController.js");
 
 router.post("/register", registerValidation, Auth.register);
 router.post("/login", loginValidation, Auth.login);
@@ -43,6 +45,11 @@ router.get("/expenses/list-update-balance/:id", Expense.listUpdateBalance);
 router.post("/expenses/add-balance/:id", updateBalanceValidation, Expense.addBalance);
 router.put("/expenses/update-history/:historyId", updateBalanceValidation, Expense.updateHistory);
 router.delete("/expenses/delete-history/:id", updateBalanceValidation, Expense.deleteHistory);
+
+router.get("/notes", Notes.show);
+router.post("/notes/create", upload.single('attachment'), notesValidation, Notes.store);
+router.put("/notes/:id", upload.single('attachment'), notesValidation, Notes.update);
+router.delete("/notes/:id", Notes.delete);
 
 module.exports = router;
 

@@ -97,7 +97,7 @@ exports.index = async (req, res) => {
         const pageNumber = Number(page) || 1; // Convert to number
         const totalExpenses = await Expense.countDocuments(filter);
         const expenses = await Expense.find(filter)
-            .sort({ paidOn: -1 })
+            .sort({ createdAt: -1 })
             .skip((pageNumber - 1) * limit)
             .limit(Number(limit));
 

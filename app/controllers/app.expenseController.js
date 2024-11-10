@@ -466,6 +466,44 @@ exports.deleteHistory = async (req, res) => {
     }
 };
 
+exports.getRecentExpenseNames = async (req, res) => {
+    console.log('Received request for user:', req.params.id);
+
+    try {
+        const createdBy = req.params.id;
+        const { query } = req.query;
+
+        if (!query || query.trim() === "") {
+            // If the query is empty, respond with a message indicating that no query was provided
+            return res.status(400).json({
+                status: "error",
+                message: "Query parameter is empty or missing",
+            });
+        }
+
+        const filter = { createdBy };
+        if (query) {
+            filter.name = { $regex: query, $options: "i" }; // Case-insensitive match
+        }
+
+        // Fetch the recent expenses based on the filter
+        const recentExpenses = await Expense.find(filter)
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .select('name');
+
+        // Remove duplicate names using a Set
+        const uniqueNames = [...new Set(recentExpenses.map(expense => expense.name))];
+
+        // Return the unique names
+        res.status(200).json({ names: uniqueNames });
+
+    } catch (error) {
+        res.status(500).json({ status: "error", code: 500, message: "Internal Server Error" });
+    }
+};
+
+
 
 
 

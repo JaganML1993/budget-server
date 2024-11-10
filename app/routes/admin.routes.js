@@ -45,6 +45,7 @@ router.get("/expenses/list-update-balance/:id", Expense.listUpdateBalance);
 router.post("/expenses/add-balance/:id", updateBalanceValidation, Expense.addBalance);
 router.put("/expenses/update-history/:historyId", updateBalanceValidation, Expense.updateHistory);
 router.delete("/expenses/delete-history/:id", updateBalanceValidation, Expense.deleteHistory);
+router.get("/expenses/recent-names/:id", Expense.getRecentExpenseNames);
 
 router.get("/notes", Notes.show);
 router.post("/notes/create", upload.single('attachment'), notesValidation, Notes.store);

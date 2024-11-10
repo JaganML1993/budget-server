@@ -44,6 +44,7 @@ exports.store = async (req, res) => {
             payType,
             totalEmi,
             emiAmount,
+            dueDate,
             status,
             remarks,
             createdBy // Assuming createdBy is sent in the body
@@ -70,6 +71,7 @@ exports.store = async (req, res) => {
             totalEmi,
             emiAmount,
             status,
+            dueDate,
             remarks,
             attachment,
             createdBy,
@@ -91,7 +93,6 @@ exports.store = async (req, res) => {
         });
 
     } catch (err) {
-        console.error("Error creating commitment:", err);
         // Handle any errors that occur during the save process
         return res.status(500).json({
             status: "error",
@@ -210,6 +211,7 @@ exports.update = async (req, res) => {
             totalEmi,
             emiAmount,
             status,
+            dueDate,
             remarks,
         } = req.body;
 
@@ -224,6 +226,7 @@ exports.update = async (req, res) => {
         commitment.status = status;
         commitment.remarks = remarks;
         commitment.attachment = attachment;
+        commitment.dueDate = dueDate;
 
         // Set paid and pending based on the category
         if (category == 2) {

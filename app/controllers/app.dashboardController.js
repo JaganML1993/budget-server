@@ -123,12 +123,58 @@ exports.index = async (req, res) => {
             monthlyTotals[expense._id - 1] = expense.totalAmount;
         });
 
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth();
+        const today = new Date().getDate();
+        const upcomingPayments = await Commitment.aggregate([
+            {
+                $match: {
+                    createdBy: userId,
+                    status: 1,           // Ongoing status
+                    category: 1          // EMI category
+                }
+            },
+            {
+                $lookup: {
+                    from: "commitmenthistories",
+                    localField: "_id",
+                    foreignField: "commitmentId",
+                    as: "commitmentHistories"
+                }
+            },
+            {
+                $addFields: {
+                    commitmentHistories: {
+                        $filter: {
+                            input: "$commitmentHistories",
+                            as: "history",
+                            cond: {
+                                $and: [
+                                    { $eq: [{ $year: "$$history.paidDate" }, currentYear] },
+                                    { $eq: [{ $month: "$$history.paidDate" }, currentMonth + 1] } // month is 1-based
+                                ]
+                            }
+                        }
+                    },
+                    dueInDays: {
+                        $subtract: ["$dueDate", today] // difference between dueDate and today's day
+                    }
+                }
+            },
+            {
+                $match: {
+                    "commitmentHistories.0": { $exists: false } // ensures no entries in current month
+                }
+            }
+        ]);
+
         res.status(200).json({
             dailyTotals,
             monthlyCategoryExpenses,
             commitments: commitmentAggregates,
             monthlyTotals,
-            totalSavings // Include total savings as a separate variable
+            totalSavings,
+            upcomingPayments
         });
     } catch (err) {
         console.error(err);

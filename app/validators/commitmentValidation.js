@@ -32,6 +32,11 @@ const commitmentValidation = [
         .optional()
         .trim()
         .escape(),
+    body('dueDate')
+        .notEmpty()
+        .withMessage('Due date is required')
+        .isInt({ min: 1 })
+        .withMessage('Due date must be an integer and at least 1'),
     body('status')
         .notEmpty()
         .isIn([1, 2])

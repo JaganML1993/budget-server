@@ -467,7 +467,6 @@ exports.deleteHistory = async (req, res) => {
 };
 
 exports.getRecentExpenseNames = async (req, res) => {
-    console.log('Received request for user:', req.params.id);
 
     try {
         const createdBy = req.params.id;

@@ -126,6 +126,7 @@ exports.index = async (req, res) => {
         const currentYear = new Date().getFullYear();
         const currentMonth = new Date().getMonth();
         const today = new Date().getDate();
+
         const upcomingPayments = await Commitment.aggregate([
             {
                 $match: {
@@ -165,8 +166,14 @@ exports.index = async (req, res) => {
                 $match: {
                     "commitmentHistories.0": { $exists: false } // ensures no entries in current month
                 }
+            },
+            {
+                $sort: {
+                    dueInDays: 1 // Sort by dueInDays in ascending order
+                }
             }
         ]);
+
 
         res.status(200).json({
             dailyTotals,

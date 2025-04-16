@@ -59,7 +59,9 @@ exports.index = async (req, res) => {
         const commitmentAggregates = await Commitment.aggregate([
             {
                 $match: {
-                    createdBy: userId
+                    createdBy: userId,
+                    status: { $ne: 2 },
+                    payType: { $ne: 2 },
                 }
             },
             {

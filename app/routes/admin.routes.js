@@ -54,8 +54,5 @@ router.post("/notes/create", upload.single('attachment'), notesValidation, Notes
 router.put("/notes/:id", upload.single('attachment'), notesValidation, Notes.update);
 router.delete("/notes/:id", Notes.delete);
 
-router.get("/house-savings", HouseSaving.index);
-router.post("/house-savings/store", houseSavingValidation, HouseSaving.store);
-
 module.exports = router;
 

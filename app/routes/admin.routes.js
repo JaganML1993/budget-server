@@ -9,14 +9,12 @@ const commitmentHistoryValidation = require("../validators/commitmentHistoryVali
 const expenseValidation = require("../validators/expenseValidation");
 const updateBalanceValidation = require('../validators/updateBalanceValidation.js');
 const notesValidation = require("../validators/notesValidation");
-const houseSavingValidation = require("../validators/houseSavingValidation");
 
 const Auth = require("../controllers/app.authController.js");
 const Dashboard = require("../controllers/app.dashboardController.js");
 const Commitment = require("../controllers/app.commitmentController.js");
 const Expense = require("../controllers/app.expenseController.js");
 const Notes = require("../controllers/app.notesController.js");
-const HouseSaving = require("../controllers/app.houseSavingController.js");
 
 router.post("/register", registerValidation, Auth.register);
 router.post("/login", loginValidation, Auth.login);

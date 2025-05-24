@@ -22,6 +22,7 @@ router.get("/details", Auth.details);
 
 router.get("/dashboard/index", Dashboard.index);
 router.get("/dashboard/upcoming-payments", Dashboard.upcomingPayments);
+router.get("/dashboard/top-card", Dashboard.topCard);
 
 router.get("/commitments", Commitment.index);
 router.post("/commitments/store", upload.single('attachment'), commitmentStoreValidation, Commitment.store);

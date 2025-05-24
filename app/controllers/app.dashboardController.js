@@ -2,6 +2,50 @@ const { default: mongoose } = require("mongoose");
 const Expense = require("../model/expense.model.js");
 const Commitment = require("../model/commitment.model.js");
 
+exports.topCard = async (req, res) => {
+  try {
+    let userId = req.user?._id || req.body.userId || req.query.userId;
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is required" });
+    }
+    if (!(userId instanceof mongoose.Types.ObjectId)) {
+      userId = new mongoose.Types.ObjectId(userId);
+    }
+
+    // Total Savings
+    const result = await Expense.aggregate([
+      { $match: { createdBy: userId } },
+      { $group: { _id: null, totalSavings: { $sum: "$amount" } } },
+    ]);
+    const totalSavings = result.length > 0 ? result[0].totalSavings : 0;
+
+    // Commitment per Month
+    const commitmentResult = await Commitment.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          payType: 1,
+          category: 1,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          commitments: { $sum: "$emiAmount" },
+        },
+      },
+    ]);
+    const commitments =
+      commitmentResult.length > 0 ? commitmentResult[0].commitments : 0;
+
+    // Return both values
+    return res.json({ totalSavings, commitments });
+  } catch (error) {
+    console.error("Error fetching top card data:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 exports.upcomingPayments = async (req, res) => {
   try {
     // Get userId from req.user, req.body, or req.query as per your auth setup

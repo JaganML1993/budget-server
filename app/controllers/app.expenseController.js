@@ -101,33 +101,11 @@ exports.index = async (req, res) => {
             .skip((pageNumber - 1) * limit)
             .limit(Number(limit));
 
-        // Modify totalAmountFilter to include existing filters and exclude category 7
-        const totalAmountFilter = {
-            ...filter,
-            category: { $ne: 7 }  // Exclude category 7
-        };
-
-        // If category is provided, include it in the total amount filter
-        if (category) {
-            totalAmountFilter.category = category;
-        }
-
-        // Fetch all expenses matching the modified totalAmountFilter
-        const expensesTotal = await Expense.find(totalAmountFilter);
-
-        const totalAmountSpent = expensesTotal.reduce((total, expense) => {
-            const amount = typeof expense.amount === 'object'
-                ? parseFloat(expense.amount.toString())
-                : parseFloat(expense.amount);
-            return total + (isNaN(amount) ? 0 : amount);
-        }, 0);
-
         res.status(200).json({
             status: "success",
             code: 200,
             data: expenses,
             total: totalExpenses,
-            totalAmountSpent,
             message: "Expenses retrieved successfully",
             totalPages: Math.ceil(totalExpenses / limit),
             currentPage: pageNumber,

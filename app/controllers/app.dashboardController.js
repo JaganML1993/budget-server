@@ -8,18 +8,22 @@ exports.topCard = async (req, res) => {
     if (!userId) {
       return res.status(400).json({ error: "User ID is required" });
     }
-    if (!(userId instanceof mongoose.Types.ObjectId)) {
-      userId = new mongoose.Types.ObjectId(userId);
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: "Invalid User ID" });
     }
+    userId = new mongoose.Types.ObjectId(userId);
 
     // Total Savings
-    const result = await Expense.aggregate([
+    const savingsResult = await Expense.aggregate([
       { $match: { createdBy: userId } },
       { $group: { _id: null, totalSavings: { $sum: "$amount" } } },
     ]);
-    const totalSavings = result.length > 0 ? result[0].totalSavings : 0;
+    const totalSavings =
+      savingsResult.length > 0 ? savingsResult[0].totalSavings : 0;
 
-    // Commitment per Month
+    // Commitment per Month (category: 1)
     const commitmentResult = await Commitment.aggregate([
       {
         $match: {
@@ -38,8 +42,29 @@ exports.topCard = async (req, res) => {
     const commitments =
       commitmentResult.length > 0 ? commitmentResult[0].commitments : 0;
 
-    // Return both values
-    return res.json({ totalSavings, commitments });
+    // Commitment Full (category: 2)
+    const commitmentFullResult = await Commitment.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          payType: 1,
+          category: 2,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          commitmentsFull: { $sum: "$emiAmount" },
+        },
+      },
+    ]);
+    const commitmentsFull =
+      commitmentFullResult.length > 0
+        ? commitmentFullResult[0].commitmentsFull
+        : 0;
+
+    // Return all values
+    return res.json({ totalSavings, commitments, commitmentsFull });
   } catch (error) {
     console.error("Error fetching top card data:", error);
     return res.status(500).json({ error: "Internal server error" });
@@ -117,202 +142,52 @@ exports.upcomingPayments = async (req, res) => {
   }
 };
 
-exports.index = async (req, res) => {
-  const { startDate, endDate } = req.query;
-  const userId = new mongoose.Types.ObjectId(req.query.userId);
-
-  const startOfMonth = new Date(
-    startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-  );
-  const endOfToday = new Date(endDate || new Date());
-  endOfToday.setHours(23, 59, 59, 999);
-
-  const currentDate = new Date();
-  if (endOfToday > currentDate) {
-    endOfToday.setTime(currentDate.getTime());
-  }
-
+// GET /dashboard/savings-by-month?userId=...&from=YYYY-MM-DD&to=YYYY-MM-DD
+exports.savingsByMonth = async (req, res) => {
   try {
-    const dailyExpenses = await Expense.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          paidOn: { $gte: startOfMonth, $lte: endOfToday },
-          category: { $ne: 7 },
-        },
-      },
+    const userId = req.user?._id || req.query.userId || req.body.userId;
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: "Invalid or missing userId" });
+    }
+
+    // Optional date range filtering
+    const { from, to } = req.query;
+    const match = { createdBy: new mongoose.Types.ObjectId(userId) };
+    if (from || to) {
+      match.createdAt = {};
+      if (from) match.createdAt.$gte = new Date(from);
+      if (to) match.createdAt.$lte = new Date(to);
+    }
+
+    // Group by year and month, sum amount
+    const data = await Expense.aggregate([
+      { $match: match },
       {
         $group: {
-          _id: { $dayOfMonth: "$paidOn" },
-          totalAmount: { $sum: { $toDouble: "$amount" } },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
-
-    const daysInMonth = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + 1,
-      0
-    ).getDate();
-    const dailyTotals = new Array(daysInMonth).fill(0);
-    dailyExpenses.forEach((expense) => {
-      if (expense._id - 1 < dailyTotals.length) {
-        dailyTotals[expense._id - 1] = expense.totalAmount;
-      }
-    });
-
-    const monthlyCategoryExpenses = await Expense.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          paidOn: { $gte: startOfMonth, $lte: endOfToday },
-        },
-      },
-      {
-        $group: {
-          _id: "$category",
-          totalAmount: { $sum: { $toDouble: "$amount" } },
-        },
-      },
-    ]);
-
-    const commitmentAggregates = await Commitment.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $ne: 2 },
-          payType: { $ne: 2 },
-        },
-      },
-      {
-        $group: {
-          _id: "$payFor",
-          totalPaid: { $sum: { $toDouble: "$paidAmount" } },
-          totalPending: { $sum: { $toDouble: "$balanceAmount" } },
-        },
-      },
-      {
-        $project: {
-          payFor: "$_id",
-          totalPaid: 1,
-          totalPending: 1,
-          _id: 0,
-        },
-      },
-      {
-        $match: {
-          totalPending: { $gt: 0 },
-        },
-      },
-    ]);
-
-    const totalSavingsData = await Commitment.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          payType: 2, // Only include savings commitments
-          status: 1,
-        },
-      },
-      {
-        $group: {
-          _id: null, // Grouping all savings together
-          totalSavings: { $sum: { $toDouble: "$paidAmount" } }, // Sum paidAmount for savings
-        },
-      },
-    ]);
-
-    const totalSavings =
-      totalSavingsData.length > 0 ? totalSavingsData[0].totalSavings : 0;
-
-    const monthlyExpenses = await Expense.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          category: { $ne: 7 },
-        },
-      },
-      {
-        $group: {
-          _id: { $month: "$paidOn" },
-          totalAmount: { $sum: { $toDouble: "$amount" } },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
-
-    const monthlyTotals = new Array(12).fill(0);
-    monthlyExpenses.forEach((expense) => {
-      monthlyTotals[expense._id - 1] = expense.totalAmount;
-    });
-
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth();
-    const today = new Date().getDate();
-
-    const upcomingPayments = await Commitment.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: 1, // Ongoing status
-          category: 1, // EMI category
-        },
-      },
-      {
-        $lookup: {
-          from: "commitmenthistories",
-          localField: "_id",
-          foreignField: "commitmentId",
-          as: "commitmentHistories",
-        },
-      },
-      {
-        $addFields: {
-          commitmentHistories: {
-            $filter: {
-              input: "$commitmentHistories",
-              as: "history",
-              cond: {
-                $and: [
-                  { $eq: [{ $year: "$$history.paidDate" }, currentYear] },
-                  { $eq: [{ $month: "$$history.paidDate" }, currentMonth + 1] }, // month is 1-based
-                ],
-              },
-            },
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
           },
-          dueInDays: {
-            $subtract: ["$dueDate", today], // difference between dueDate and today's day
-          },
+          total: { $sum: "$amount" },
         },
       },
       {
-        $match: {
-          "commitmentHistories.0": { $exists: false }, // ensures no entries in current month
-        },
-      },
-      {
-        $sort: {
-          dueInDays: 1, // Sort by dueInDays in ascending order
-        },
+        $sort: { "_id.year": 1, "_id.month": 1 },
       },
     ]);
 
-    res.status(200).json({
-      dailyTotals,
-      monthlyCategoryExpenses,
-      commitments: commitmentAggregates,
-      monthlyTotals,
-      totalSavings,
-      upcomingPayments,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({
-      status: "error",
-      code: 500,
-      data: [],
-      message: "Internal Server Error",
-    });
+    // Total savings (in filter)
+    const totalSavings = data.reduce((acc, cur) => acc + cur.total, 0);
+
+    // Format for frontend
+    const result = data.map((item) => ({
+      month: `${item._id.year}-${String(item._id.month).padStart(2, "0")}`,
+      total: item.total,
+    }));
+
+    return res.json({ monthly: result, totalSavings });
+  } catch (error) {
+    console.error("savingsByMonth error:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
